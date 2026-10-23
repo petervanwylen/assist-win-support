@@ -69,7 +69,7 @@ endif
 
 SOURCES=assist.c spk.c ascii_ephem.c forces.c tools.c
 OBJECTS=$(SOURCES:.c=.o)
-HEADERS=$(SOURCES:.c=.h)
+HEADERS=$(SOURCES:.c=.h) assist_platform.h  # assist_platform.h has no matching .c file
 
 all: $(SOURCES) librebound.so libassist.so
 	

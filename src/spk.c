@@ -6,7 +6,6 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/mman.h>
 #include <math.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -14,8 +13,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 #include <time.h>
+#include "assist_platform.h"
 #include "assist.h"
 #include "spk.h"
 
@@ -211,12 +210,16 @@ void assist_spk_join_masses(struct spk_s *sp, const struct mass_data* masses, do
 
 // Load the file record of an spk file
     // For file format information, see https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/FORTRAN/req/daf.html
+//
+// The caller owns `fd` and closes it on a NULL return, so this function must
+// not close it. Doing so was a double close: harmless on glibc, which returns
+// EBADF, but the Windows CRT routes it to the invalid parameter handler and
+// aborts the process.
 union record_t * assist_load_spk_file_record(int fd) {
     // Allocate memory for the record
     union record_t *record = calloc(1, sizeof(union record_t));
     if (!record) {
         fprintf(stderr, "Memory allocation failed.\n");
-        close(fd);
         return NULL;
     }
 
@@ -224,7 +227,6 @@ union record_t * assist_load_spk_file_record(int fd) {
     if (lseek(fd, 0, SEEK_SET) == -1) {
         perror("lseek");
         free(record);
-        close(fd);
         return NULL;
     }
 
@@ -237,7 +239,6 @@ union record_t * assist_load_spk_file_record(int fd) {
             fprintf(stderr, "Incomplete read. Expected %d bytes, got %zd bytes.\n", RECORD_LENGTH, bytesRead);
         }
         free(record);
-        close(fd);
 		return NULL;
     }
 
@@ -245,7 +246,6 @@ union record_t * assist_load_spk_file_record(int fd) {
     if (strncmp(record->file.locidw, "DAF/SPK", 7) != 0) {
         fprintf(stderr,"Error parsing DAF/SPK file. Incorrect header.\n");
         free(record);
-		close(fd);
 		return NULL;
 	}
 
@@ -254,7 +254,6 @@ union record_t * assist_load_spk_file_record(int fd) {
 	if (nc != sizeof(struct sum_s)) {
         fprintf(stderr,"Error parsing DAF/SPK file. Wrong size of summary record.\n");
         free(record);
-		close(fd);
 		return NULL;
 	}
     
@@ -266,7 +265,7 @@ union record_t * assist_load_spk_file_record(int fd) {
 // is called.
 struct spk_s * assist_spk_init(const char *path) {
     // Try opening file.
-    int fd = open(path, O_RDONLY);
+    int fd = open(path, O_RDONLY | O_BINARY);
     if (fd < 0){
         return NULL;
     }
@@ -376,8 +375,8 @@ struct spk_s * assist_spk_init(const char *path) {
     }
 
     // Get file size
-	struct stat sb;
-	if (fstat(fd, &sb) < 0){
+	assist_stat_t sb;
+	if (assist_fstat(fd, &sb) < 0){
         fprintf(stderr, "Error calculating size for DAF/SPL file.\n");
         return NULL; 
     }
@@ -697,7 +696,7 @@ struct spk_constants_and_masses assist_load_spk_constants_and_masses(const char 
     struct spk_constants_and_masses data = {0};
     
     // Try opening file.
-    int fd = open(path, O_RDONLY);
+    int fd = open(path, O_RDONLY | O_BINARY);
     if (fd < 0){
         return data;
     }

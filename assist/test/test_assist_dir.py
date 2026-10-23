@@ -74,19 +74,25 @@ class TestAssistDir(unittest.TestCase):
             data_dir = os.path.join(tmpdir, "data")
             os.mkdir(data_dir)
 
-            # Prefer symlinks to avoid copying large ephemeris files.
-            def _safe_symlink(src: str, dst: str) -> bool:
-                try:
-                    os.symlink(src, dst)
-                    return True
-                except (OSError, NotImplementedError):
-                    return False
+            # Prefer links to avoid copying large ephemeris files.
+            #
+            # Windows only permits os.symlink() for administrators or with
+            # Developer Mode enabled, so fall back to a hard link, which NTFS
+            # allows unprivileged as long as both paths are on the same volume.
+            def _safe_link(src: str, dst: str) -> bool:
+                for linker in (os.symlink, os.link):
+                    try:
+                        linker(src, dst)
+                        return True
+                    except (OSError, NotImplementedError, AttributeError):
+                        continue
+                return False
 
-            if not _safe_symlink(src_440, os.path.join(data_dir, "linux_p1550p2650.440")):
-                self.skipTest("Symlinks not available; skipping ASSIST_DIR .440 test to avoid copying large data files.")
+            if not _safe_link(src_440, os.path.join(data_dir, "linux_p1550p2650.440")):
+                self.skipTest("Neither symlinks nor hard links are available; skipping ASSIST_DIR .440 test to avoid copying large data files.")
 
             if os.path.exists(src_ast):
-                _safe_symlink(src_ast, os.path.join(data_dir, "sb441-n16.bsp"))
+                _safe_link(src_ast, os.path.join(data_dir, "sb441-n16.bsp"))
 
             with self._with_assist_dir(tmpdir):
                 ephem = assist.Ephem()

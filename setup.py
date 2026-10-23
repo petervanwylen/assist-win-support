@@ -78,6 +78,38 @@ class build_ext(_build_ext):
                 ext.extra_link_args.append('-Wl,-rpath,'+rebdir)
                 print("Cross-compile extra link args:", ext.extra_link_args)
 
+    def get_export_symbols(self, ext):
+        # libassist is a plain shared library opened with ctypes, not an
+        # importable extension module. setuptools asks the linker to export
+        # PyInit_libassist anyway, which MSVC turns into LNK2001; Unix linkers
+        # do not require an entry point, so this only matters on Windows.
+        if sys.platform == 'win32':
+            return ext.export_symbols
+        return _build_ext.get_export_symbols(self, ext)
+
+    def build_extensions(self):
+        # The REBOUND wheel ships no import library, so build one and point the
+        # linker at it. This belongs here rather than in finalize_options()
+        # because self.compiler, which locates lib.exe, is created by run().
+        if sys.platform == 'win32':
+            import rebound
+
+            # pip runs the build backend with this directory as cwd, but does
+            # not put it on sys.path.
+            here = os.path.dirname(os.path.abspath(__file__))
+            if here not in sys.path:
+                sys.path.insert(0, here)
+            from windows_support import build_rebound_import_library
+
+            rebdir = os.path.dirname(inspect.getfile(rebound))
+            implib_dir = build_rebound_import_library(
+                self.compiler, rebdir, os.path.join(self.build_temp, 'rebound_implib'))
+            for ext in self.extensions:
+                ext.library_dirs.append(implib_dir)
+
+        _build_ext.build_extensions(self)
+
+
 from distutils.version import LooseVersion
 
 extra_link_args=[]
@@ -123,10 +155,7 @@ libassistmodule = Extension(
         # The `src/Makefile` build (and C unit tests) rely on the compiler
         # default here, which is effectively "strict overflow" at -O3. Add the
         # explicit override so the Python extension matches the Makefile build.
-        #
-        # Note: This flag is not supported by MSVC, so we only apply it on
-        # non-Windows platforms.
-        *([] if sys.platform.startswith('win') else ['-fstrict-overflow']),
+        '-fstrict-overflow',
         '-O3',
         '-std=c99',
         '-fPIC',
@@ -136,6 +165,24 @@ libassistmodule = Extension(
     ],
     extra_link_args=extra_link_args,
 )
+
+if sys.platform == 'win32':
+    # MSVC rejects every flag above. It needs no counterpart to
+    # -fno-strict-aliasing, because it does not do type-based alias analysis in
+    # the first place. /fp:precise is its default, but is stated explicitly
+    # because it matters here: /fp:fast changes a sensitive long integration
+    # (Apophis over one year) by a factor of 26.
+    libassistmodule.extra_compile_args = [
+        '/O2',
+        '/fp:precise',
+        '/std:c11',
+        # The ephemeris readers use the POSIX names open/read/close plus
+        # strdup/sprintf, both families of which MSVC deprecates by default.
+        '/D_CRT_SECURE_NO_WARNINGS',
+        '/D_CRT_NONSTDC_NO_WARNINGS',
+        '-D_GNU_SOURCE',
+        ghash_arg,
+    ]
 
 here = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>  
-#include <unistd.h>
+#include "../../src/assist_platform.h"
 #include <assert.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -46,7 +46,7 @@ static const unsigned char ascii_bin_sample[] = {
 static const char ascii_source_sample[] = "JPL Planetary EPHEMERIS DE440 ASCII source file\n";
 
 static int create_temp_file(const char* filename, const void* data, size_t size) {
-    int fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    int fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC | O_BINARY, 0644);
     if (fd < 0) return -1;
     
     if (write(fd, data, size) != (ssize_t)size) {
@@ -65,7 +65,7 @@ int main() {
     
     // Test valid SPK (.bsp) file detection
     assert(create_temp_file("test_valid.bsp", valid_bsp_sample, sizeof(valid_bsp_sample)) == 0);
-    fd = open("test_valid.bsp", O_RDONLY);
+    fd = open("test_valid.bsp", O_RDONLY | O_BINARY);
     assert(fd >= 0);
     format = assist_detect_ephemeris_file_format(fd);
     close(fd);
@@ -74,7 +74,7 @@ int main() {
     
     // Test ASCII-derived binary file detection
     assert(create_temp_file("test_ascii_bin.440", ascii_bin_sample, sizeof(ascii_bin_sample)) == 0);
-    fd = open("test_ascii_bin.440", O_RDONLY);
+    fd = open("test_ascii_bin.440", O_RDONLY | O_BINARY);
     assert(fd >= 0);
     format = assist_detect_ephemeris_file_format(fd);
     close(fd);
@@ -87,7 +87,7 @@ int main() {
     
     // Test ASCII source file handling (unsupported => UNKNOWN)
     assert(create_temp_file("test_ascii.440", ascii_source_sample, strlen(ascii_source_sample)) == 0);
-    fd = open("test_ascii.440", O_RDONLY);
+    fd = open("test_ascii.440", O_RDONLY | O_BINARY);
     assert(fd >= 0);
     format = assist_detect_ephemeris_file_format(fd);
     close(fd);
@@ -101,7 +101,7 @@ int main() {
     // Test unknown file format
     const char unknown_sample[] = "Not an ephemeris file";
     assert(create_temp_file("test_unknown.dat", unknown_sample, strlen(unknown_sample)) == 0);
-    fd = open("test_unknown.dat", O_RDONLY);
+    fd = open("test_unknown.dat", O_RDONLY | O_BINARY);
     assert(fd >= 0);
     format = assist_detect_ephemeris_file_format(fd);
     close(fd);
@@ -110,13 +110,13 @@ int main() {
     
     // Test signature detection function directly
     assert(create_temp_file("test_sig_valid.bsp", valid_bsp_sample, sizeof(valid_bsp_sample)) == 0);
-    fd = open("test_sig_valid.bsp", O_RDONLY);
+    fd = open("test_sig_valid.bsp", O_RDONLY | O_BINARY);
     assert(assist_detect_ascii_bin_signature(fd) == 0);
     close(fd);
     unlink("test_sig_valid.bsp");
     
     assert(create_temp_file("test_sig_ascii_bin.440", ascii_bin_sample, sizeof(ascii_bin_sample)) == 0);
-    fd = open("test_sig_ascii_bin.440", O_RDONLY);
+    fd = open("test_sig_ascii_bin.440", O_RDONLY | O_BINARY);
     assert(assist_detect_ascii_bin_signature(fd) == 1);
     close(fd);
     unlink("test_sig_ascii_bin.440");
@@ -124,7 +124,7 @@ int main() {
     // Test with real SPK (.bsp) file if available
     const char* test_files[] = {"../../data/de440.bsp", "/tmp/de440.bsp", "./de440.bsp"};
     for (int i = 0; i < 3; i++) {
-        fd = open(test_files[i], O_RDONLY);
+        fd = open(test_files[i], O_RDONLY | O_BINARY);
         if (fd >= 0) {
             format = assist_detect_ephemeris_file_format(fd);
             close(fd);

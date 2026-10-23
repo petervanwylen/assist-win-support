@@ -4,6 +4,7 @@ include src/tools.c
 include src/spk.c
 include src/ascii_ephem.c
 include src/assist.h
+include src/assist_platform.h
 include src/forces.h
 include src/tools.h
 include src/spk.h
@@ -12,4 +13,5 @@ include README.md
 include LICENSE
 include version.txt
 include pyproject.toml
+include windows_support.py
 include assist/py.typed

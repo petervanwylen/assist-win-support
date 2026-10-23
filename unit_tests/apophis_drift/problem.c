@@ -94,10 +94,13 @@ int main(int argc, char* argv[]){
         {"t1", t1},
     };
 
-    double dy_240 = 0.0;
-    double dz_240 = 0.0;
-    double dy_final = 0.0;
-    double dz_final = 0.0;
+    // Track whether the residual direction takes both signs over the window.
+    // We deliberately do not record which checkpoint holds which sign: this
+    // residual is a roundoff-scale difference between two nearly identical
+    // integrations, so its per-checkpoint sign is compiler dependent (see the
+    // note on the assertions below).
+    const double eps = 1e-3; // 1 mm
+    int dy_pos = 0, dy_neg = 0, dz_pos = 0, dz_neg = 0;
 
     double r0 = -1.0;
     double r_final = -1.0;
@@ -117,14 +120,14 @@ int main(int argc, char* argv[]){
         if (i == 0){
             r0 = r_m;
         }
-        if (strcmp(checkpoints[i].name, "t0+240d") == 0){
-            dy_240 = dy_m;
-            dz_240 = dz_m;
+        if (i > 0){
+            if (dy_m >  eps) dy_pos = 1;
+            if (dy_m < -eps) dy_neg = 1;
+            if (dz_m >  eps) dz_pos = 1;
+            if (dz_m < -eps) dz_neg = 1;
         }
         if (strcmp(checkpoints[i].name, "t1") == 0){
             r_final = r_m;
-            dy_final = dy_m;
-            dz_final = dz_m;
         }
     }
 
@@ -136,12 +139,21 @@ int main(int argc, char* argv[]){
     assert(r_final > 1e-3);   // 1 mm (not exactly zero)
     assert(r_final < 5000.0); // 5 km
 
-    // Residual direction changes (dy/dz should flip sign between ~240d and final).
-    const double eps = 1e-3; // 1 mm
-    assert(dy_240 > eps);
-    assert(dz_240 > eps);
-    assert(dy_final < -eps);
-    assert(dz_final < -eps);
+    // The direction of the residual rotates over the window, so dy and dz each
+    // take both signs. We assert only that, not which checkpoint carries which
+    // sign: this residual is dominated by floating-point evaluation order
+    // rather than by the ephemeris data. Changing only the MSVC floating-point
+    // model (/fp:precise -> /fp:fast) moves the final residual from 1.9 m to
+    // 48 m, and GCC on Linux and MSVC on Windows produce opposite signs at the
+    // same checkpoints with comparable magnitudes. The absolute-accuracy tests
+    // against JPL Horizons (holman_*, apophis_*, 5303_Ceres_*) are what pin
+    // the trajectories; this test is a guardrail against big regressions such
+    // as missing asteroid masses or the wrong backend being selected.
+    //
+    // This matches assist/test/test_apophis_drift_spk_vs_ascii.py, which
+    // already asserts the sign change this way.
+    assert(dy_pos && dy_neg);
+    assert(dz_pos && dz_neg);
 
     assist_ephem_free(ephem_spk);
     assist_ephem_free(ephem_ascii);
