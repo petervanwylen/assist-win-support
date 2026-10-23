@@ -70,6 +70,82 @@ Now you can try out if assist works.
 
 You should see the default reference Julian date (2451545.0) and the position of the Earth at that time printed on the screen.
 
+## Installation (Windows)
+
+ASSIST builds and runs natively on 64-bit Windows (`win_amd64`). There are no
+Windows wheels on PyPI yet, so `pip` compiles ASSIST from source and you need a
+C compiler first. This is a one-time setup.
+
+**1. Install the Visual Studio Build Tools** (the C++ compiler `cl.exe`). In
+PowerShell:
+
+    winget install --id Microsoft.VisualStudio.2022.BuildTools --override "--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+
+You do not need the full Visual Studio IDE, and you do not need to open a
+Developer Command Prompt afterwards -- `pip` locates the compiler on its own.
+
+**2. Install ASSIST.** REBOUND 4.x publishes Windows wheels for CPython 3.10,
+3.11 and 3.12, so use one of those versions:
+
+    py -3.12 -m venv venv
+    venv\Scripts\activate
+    pip install assist
+
+REBOUND and numpy are installed automatically.
+
+**3. Download the ephemeris data files.** These are large, roughly 1 GB total:
+
+    mkdir data
+    curl.exe https://ssd.jpl.nasa.gov/ftp/eph/planets/Linux/de440/linux_p1550p2650.440 -o data/linux_p1550p2650.440
+    curl.exe https://ssd.jpl.nasa.gov/ftp/eph/small_bodies/asteroids_de441/sb441-n16.bsp -o data/sb441-n16.bsp
+
+Then check that it works:
+
+    python
+
+    >>> import assist
+    >>> ephem = assist.Ephem("data/linux_p1550p2650.440", "data/sb441-n16.bsp")
+    >>> print(ephem.jd_ref)
+    >>> ephem.get_particle("Earth", 0)
+
+### Notes and current limitations
+
+- **Supported target:** 64-bit CPython 3.10-3.12 on `win_amd64`, Python API
+  only. The physics and the public Python API are identical to Linux and macOS.
+- **Python 3.13+** does not work yet, because REBOUND 4.x publishes no Windows
+  wheels for it and ASSIST requires `rebound>=4.4.11,<5.0.0`.
+- **MSVC only.** MinGW and Cygwin are not supported: ASSIST links against the
+  `librebound*.pyd` from the REBOUND wheel, which is built with MSVC.
+- **The REBOUND wheel ships no import library.** MSVC cannot link against a DLL
+  directly, so `setup.py` reconstructs `rebound*.lib` from the export table of
+  `librebound*.pyd` at build time (see `windows_support.py`). This happens
+  automatically.
+- **Numerical differences.** MSVC has no equivalent of GCC's
+  `-fno-strict-aliasing` / `-fstrict-overflow`; it does not perform
+  type-based alias analysis, so those flags are unnecessary. ASSIST is compiled
+  with `/fp:precise` to keep floating-point evaluation faithful. All accuracy
+  tests against JPL Horizons pass with the same tolerances used on Linux.
+- **Not yet supported on Windows:** OpenMP, MPI, and the C examples under
+  `examples/` (their makefiles are GNU/POSIX). The C *unit tests* do run --
+  see below.
+
+### Running the tests on Windows
+
+The Python test suite runs as usual once the ephemeris files are in `data/`
+(`de440.bsp` is needed in addition to the two files above):
+
+    set ASSIST_DIR=%CD%
+    python -m unittest discover -s assist/test -p "test_*.py"
+
+The C unit tests are normally driven by GNU make, which is not available here.
+Use the MSVC driver instead, which builds `libassist.dll` and every
+`unit_tests/*/problem.c` and runs them:
+
+    python dev_tools/build_c_tests_windows.py
+
+    # or a subset
+    python dev_tools/build_c_tests_windows.py holman_spk apophis_spk
+
 ## Installation (C)
 
 To install the C version of ASSIST, first clone the REBOUND and then the ASSIST repositories. In an empty directory, run:
