@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include "assist_platform.h"
 #include <string.h>
 #include "assist.h"
 
@@ -11,7 +11,7 @@ int main(){
 
     // Detect SPK (.bsp) if available
     int fd;
-    fd = open("../../data/de440.bsp", O_RDONLY);
+    fd = open("../../data/de440.bsp", O_RDONLY | O_BINARY);
     if (fd>=0){
         ephemeris_file_format_t f = assist_detect_ephemeris_file_format(fd);
         if (f != FILE_FORMAT_VALID_BSP){
@@ -24,7 +24,7 @@ int main(){
     }
 
     // Detect ASCII-derived binary ephemeris (.440/.441) if available
-    fd = open("../../data/linux_p1550p2650.440", O_RDONLY);
+    fd = open("../../data/linux_p1550p2650.440", O_RDONLY | O_BINARY);
     if (fd>=0){
         ephemeris_file_format_t f = assist_detect_ephemeris_file_format(fd);
         if (f != FILE_FORMAT_ASCII_BIN){
@@ -35,8 +35,10 @@ int main(){
     }
 
     // Create a small ASCII source-like temp file (unsupported; should be UNKNOWN)
-    char tmp[] = "/tmp/assist_ascii_XXXXXX";
-    int tfd = mkstemp(tmp);
+    // Scratch file in the current directory rather than mkstemp("/tmp/..."),
+    // which is POSIX-only.
+    const char* tmp = "test_ascii_source.txt";
+    int tfd = open(tmp, O_CREAT | O_RDWR | O_TRUNC | O_BINARY, 0644);
     if (tfd>=0){
         const char* content = "JPL EPHEMERIS ASCII SOURCE\nConstants...\n";
         write(tfd, content, strlen(content));
@@ -47,7 +49,7 @@ int main(){
             failures++;
         }
         close(tfd);
-        unlink(tmp);
+        remove(tmp);
     }
 
     if (failures){
