@@ -102,24 +102,24 @@ union record_t {
 
 
 
-int assist_spk_free(struct spk_s *pl);
-struct spk_s * assist_spk_init(const char *path);
-union record_t * assist_load_spk_file_record(int fd);
-struct spk_constants_and_masses assist_load_spk_constants_and_masses(const char *path);
-void assist_apply_spk_constants(struct assist_ephem* ephem, const struct spk_constants_and_masses* data);
-void assist_free_spk_constants_and_masses(struct spk_constants_and_masses* data);
-void parse_comments(int fd, int first_summary_record, char **comments);
-void assist_spk_join_masses(struct spk_s *sp, const struct mass_data* masses, double emrat);
-enum ASSIST_STATUS assist_spk_calc(const struct spk_s *pl, double jd_ref, double jd_rel, int m, double* GM, double* x, double* y, double* z);
-enum ASSIST_STATUS assist_spk_calc_planets(const struct assist_ephem* ephem, double jd_ref, double jd_rel, int m, double* GM, double* x, double* y, double* z, double* vx, double* vy, double* vz, double* ax, double* ay, double* az);
+ASSIST_API int assist_spk_free(struct spk_s *pl);
+ASSIST_API struct spk_s * assist_spk_init(const char *path);
+ASSIST_API union record_t * assist_load_spk_file_record(int fd);
+ASSIST_API struct spk_constants_and_masses assist_load_spk_constants_and_masses(const char *path);
+ASSIST_API void assist_apply_spk_constants(struct assist_ephem* ephem, const struct spk_constants_and_masses* data);
+ASSIST_API void assist_free_spk_constants_and_masses(struct spk_constants_and_masses* data);
+ASSIST_API void parse_comments(int fd, int first_summary_record, char **comments);
+ASSIST_API void assist_spk_join_masses(struct spk_s *sp, const struct mass_data* masses, double emrat);
+ASSIST_API enum ASSIST_STATUS assist_spk_calc(const struct spk_s *pl, double jd_ref, double jd_rel, int m, double* GM, double* x, double* y, double* z);
+ASSIST_API enum ASSIST_STATUS assist_spk_calc_planets(const struct assist_ephem* ephem, double jd_ref, double jd_rel, int m, double* GM, double* x, double* y, double* z, double* vx, double* vy, double* vz, double* ax, double* ay, double* az);
 // Wrapper that accepts ASSIST_BODY index and maps to NAIF code
-enum ASSIST_STATUS assist_spk_calc_planets_by_assist(const struct assist_ephem* ephem, double jd_ref, double jd_rel, int assist_body,
+ASSIST_API enum ASSIST_STATUS assist_spk_calc_planets_by_assist(const struct assist_ephem* ephem, double jd_ref, double jd_rel, int assist_body,
                                                      double* GM,
                                                      double* out_x, double* out_y, double* out_z,
                                                      double* out_vx, double* out_vy, double* out_vz,
                                                      double* out_ax, double* out_ay, double* out_az);
-struct spk_target* assist_spk_find_target(const struct spk_s *pl, int code);
-struct mpos_s assist_spk_target_pos(const struct spk_s *pl, const struct spk_target* target, double jd_ref, double jd_rel);
+ASSIST_API struct spk_target* assist_spk_find_target(const struct spk_s *pl, int code);
+ASSIST_API struct mpos_s assist_spk_target_pos(const struct spk_s *pl, const struct spk_target* target, double jd_ref, double jd_rel);
 
 #endif // _SPK_H
 

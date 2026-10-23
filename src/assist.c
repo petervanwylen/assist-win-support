@@ -31,7 +31,7 @@
 #include <limits.h>
 #include <float.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include "assist_platform.h"
 #include "assist.h"
 #include "rebound.h"
 
@@ -192,7 +192,7 @@ int assist_ephem_init(struct assist_ephem* ephem, char *user_planets_path, char 
 
     ephem->jd_ref = 2451545.0; // Default jd_ref
     
-    const int FNAMESIZE = 1024;
+    enum { FNAMESIZE = 1024 };  // enum, not `const int`: MSVC has no VLAs
     char planets_path[FNAMESIZE];
     char asteroids_path[FNAMESIZE];        
 
@@ -224,7 +224,7 @@ int assist_ephem_init(struct assist_ephem* ephem, char *user_planets_path, char 
     ephem->ascii_planets = NULL;
     ephemeris_file_format_t planets_format = FILE_FORMAT_UNKNOWN;
     {
-        int fd = open(planets_path, O_RDONLY);
+        int fd = open(planets_path, O_RDONLY | O_BINARY);
         if (fd >= 0){
             planets_format = assist_detect_ephemeris_file_format(fd);
             close(fd);

@@ -10,16 +10,16 @@
 
 #include "assist.h"
 
-struct ascii_s * assist_ascii_init(char *path);
-void assist_ascii_free(struct ascii_s *ascii);
-void assist_ascii_work(double *P, int ncm, int ncf, int niv, double t0, double t1, double *u, double *v, double *w);
-enum ASSIST_STATUS assist_ascii_calc(struct ascii_s *pl, double jd_ref, double jd_rel, int body, 
+ASSIST_API struct ascii_s * assist_ascii_init(char *path);
+ASSIST_API void assist_ascii_free(struct ascii_s *ascii);
+ASSIST_API void assist_ascii_work(double *P, int ncm, int ncf, int niv, double t0, double t1, double *u, double *v, double *w);
+ASSIST_API enum ASSIST_STATUS assist_ascii_calc(struct ascii_s *pl, double jd_ref, double jd_rel, int body, 
 		 double* const GM,
 		 double* const x, double* const y, double* const z,
 		 double* const vx, double* const vy, double* const vz,
          double* const ax, double* const ay, double* const az);
 
-enum ASSIST_STATUS assist_ascii_calc_from_ephem(const struct assist_ephem* ephem, double jd_ref, double jd_rel, int body, 
+ASSIST_API enum ASSIST_STATUS assist_ascii_calc_from_ephem(const struct assist_ephem* ephem, double jd_ref, double jd_rel, int body, 
 		 double* const GM,
 		 double* const x, double* const y, double* const z,
 		 double* const vx, double* const vy, double* const vz,
@@ -27,7 +27,7 @@ enum ASSIST_STATUS assist_ascii_calc_from_ephem(const struct assist_ephem* ephem
 
 // Lookup a 6-character constant (e.g. "GMS", "GM1", "MA0001") in a .440/.441 file.
 // Returns 1 if found, 0 otherwise.
-int assist_ascii_find_constant(const struct ascii_s* ascii, const char* name, double* out_value);
+ASSIST_API int assist_ascii_find_constant(const struct ascii_s* ascii, const char* name, double* out_value);
 
 // Order of columns in the ASCII-derived ephemeris file
 enum {

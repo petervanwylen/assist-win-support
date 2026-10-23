@@ -33,9 +33,31 @@
 #define ASSISTGITHASH notavailable0000000000000000000000000001 
 #endif // ASSISTGITHASH
 
-extern const char* assist_build_str;      ///< Date and time build string.
-extern const char* assist_version_str;    ///< Version string.
-extern const char* assist_githash_str;    ///< Current git hash.
+// Symbol visibility.
+//
+// On Windows, MSVC exports nothing from a DLL unless it is explicitly marked.
+// The Python bindings reach into libassist with ctypes (including data symbols
+// such as `assist_version_str` via `in_dll`), and the C unit tests link against
+// the same library, so every public declaration below is tagged with
+// ASSIST_API.
+//
+// `LIBASSIST` is defined while compiling the library itself (see setup.py and
+// src/Makefile) and is absent when a consumer includes this header, which is
+// what selects dllexport vs dllimport. On POSIX the macro expands to nothing
+// and the default visibility applies, exactly as before.
+#if defined(_WIN32)
+    #if defined(LIBASSIST)
+        #define ASSIST_API __declspec(dllexport)
+    #else
+        #define ASSIST_API __declspec(dllimport)
+    #endif
+#else
+    #define ASSIST_API
+#endif
+
+ASSIST_API extern const char* assist_build_str;      ///< Date and time build string.
+ASSIST_API extern const char* assist_version_str;    ///< Version string.
+ASSIST_API extern const char* assist_githash_str;    ///< Current git hash.
 
 // -----------------------------
 // Ephemeris format + discovery
@@ -62,14 +84,14 @@ typedef enum {
 
 // Detect whether `fd` points to an ASCII-derived binary ephemeris (.440/.441).
 // Returns 1 if it matches the expected signature, 0 otherwise.
-int assist_detect_ascii_bin_signature(int fd);
+ASSIST_API int assist_detect_ascii_bin_signature(int fd);
 
 // Detect ephemeris file format for an open file descriptor.
-ephemeris_file_format_t assist_detect_ephemeris_file_format(int fd);
+ASSIST_API ephemeris_file_format_t assist_detect_ephemeris_file_format(int fd);
 
 // Discover the planets ephemeris path under `assist_dir` using ASSIST's
 // documented search order. Returns 1 if a readable candidate is found, 0 if not.
-int assist_discover_planets_path(char* out_path, size_t out_path_size, const char* assist_dir);
+ASSIST_API int assist_discover_planets_path(char* out_path, size_t out_path_size, const char* assist_dir);
 
 
 // ENUM to enable/disable different forces
@@ -97,7 +119,8 @@ enum ASSIST_STATUS{
     ASSIST_ERROR_N,
 };
 
-extern const char* assist_error_messages[];
+ASSIST_API extern const char* assist_error_messages[];
+ASSIST_API extern const int assist_error_messages_N;
 
 enum ASSIST_BODY {
     ASSIST_BODY_SUN         = 0,
@@ -199,23 +222,23 @@ struct assist_extras {
  * @param sim Pointer to the reb_simulation on which to add ASSIST functionality.
  * @return Pointer to an assist_extras structure.
  */
-struct assist_extras* assist_attach(struct reb_simulation* sim, struct assist_ephem* ephem);
+ASSIST_API struct assist_extras* assist_attach(struct reb_simulation* sim, struct assist_ephem* ephem);
 
 /**
  * @brief Frees all memory allocated by ASSIST instance.
  * @details Should be called after simulation is done if memory is a concern.
  * @param assist The assist_extras pointer returned from the initial call to assist_attach.
  */
-void assist_free(struct assist_extras* assist);
+ASSIST_API void assist_free(struct assist_extras* assist);
 
-void assist_ephem_free(struct assist_ephem* ephem);
+ASSIST_API void assist_ephem_free(struct assist_ephem* ephem);
 
 /**
  * @brief Detaches ASSIST from simulation, resetting all the simulation's function pointers that ASSIST has set.
  * @details This does not free the memory allocated by ASSIST (call assist_free).
  * @param sim Pointer to the simulation from which to remove ASSIST
  */
-void assist_detach(struct reb_simulation* sim, struct assist_extras* assist);
+ASSIST_API void assist_detach(struct reb_simulation* sim, struct assist_extras* assist);
 
 /**
  * @brief Output an error message.
@@ -224,15 +247,15 @@ void assist_detach(struct reb_simulation* sim, struct assist_extras* assist);
  * @param assist The assist_extras pointer.
  * @param msg The error message.
  */
-void assist_error(struct assist_extras* assist, const char* const msg);
+ASSIST_API void assist_error(struct assist_extras* assist, const char* const msg);
 
 
-int assist_interpolate_simulation(struct reb_simulation* sim1, struct reb_simulation* sim2, double h);
-struct reb_simulation* assist_create_interpolated_simulation(struct reb_simulationarchive* sa, double t);
-void assist_integrate_or_interpolate(struct assist_extras* ax, double t);
+ASSIST_API int assist_interpolate_simulation(struct reb_simulation* sim1, struct reb_simulation* sim2, double h);
+ASSIST_API struct reb_simulation* assist_create_interpolated_simulation(struct reb_simulationarchive* sa, double t);
+ASSIST_API void assist_integrate_or_interpolate(struct assist_extras* ax, double t);
 
 // Find particle position and velocity based on ephemeris data
-struct reb_particle assist_get_particle(const struct assist_ephem* ephem, const int particle_id, const double t);
+ASSIST_API struct reb_particle assist_get_particle(const struct assist_ephem* ephem, const int particle_id, const double t);
 
 /**
  * @brief Find particle position and velocity based on ephemeris data.
@@ -242,7 +265,7 @@ struct reb_particle assist_get_particle(const struct assist_ephem* ephem, const 
  * @param t The time at which to find the particle.
  * @param error Pointer to an integer to store the error code.
  */
-struct reb_particle assist_get_particle_with_error(const struct assist_ephem* ephem, const int particle_id, const double t, int* error);
+ASSIST_API struct reb_particle assist_get_particle_with_error(const struct assist_ephem* ephem, const int particle_id, const double t, int* error);
 
 /**
  * @brief Report the ephemeris time coverage for an assist_ephem instance.
@@ -259,19 +282,19 @@ struct reb_particle assist_get_particle_with_error(const struct assist_ephem* ep
  * @param t_beg Pointer to store the earliest usable time. May be NULL.
  * @param t_end Pointer to store the latest usable time. May be NULL.
  */
-void assist_ephem_time_bounds(const struct assist_ephem* ephem, double* t_beg, double* t_end);
+ASSIST_API void assist_ephem_time_bounds(const struct assist_ephem* ephem, double* t_beg, double* t_end);
 
 // Functions called from python:
-void assist_init(struct assist_extras* assist, struct reb_simulation* sim, struct assist_ephem* ephem);
-void assist_free_pointers(struct assist_extras* assist);
-void assist_ephem_free_pointers(struct assist_ephem* ephem);
+ASSIST_API void assist_init(struct assist_extras* assist, struct reb_simulation* sim, struct assist_ephem* ephem);
+ASSIST_API void assist_free_pointers(struct assist_extras* assist);
+ASSIST_API void assist_ephem_free_pointers(struct assist_ephem* ephem);
 
 
-void test_vary(struct reb_simulation* sim, FILE *vfile);
+ASSIST_API void test_vary(struct reb_simulation* sim, FILE *vfile);
 
-void test_vary_2nd(struct reb_simulation* sim, FILE *vfile);
+ASSIST_API void test_vary_2nd(struct reb_simulation* sim, FILE *vfile);
 
-struct assist_ephem* assist_ephem_create(char *planets_file_name, char *asteroids_file_name);
+ASSIST_API struct assist_ephem* assist_ephem_create(char *planets_file_name, char *asteroids_file_name);
 
 /**
  * @brief Initialize an ASSIST ephemeris structure.
@@ -287,7 +310,7 @@ struct assist_ephem* assist_ephem_create(char *planets_file_name, char *asteroid
  * @return ASSIST_SUCCESS if successful, otherwise an error code.
  */
 ///
-int assist_ephem_init(struct assist_ephem* ephem, char *user_planets_path, char *user_asteroids_path);
+ASSIST_API int assist_ephem_init(struct assist_ephem* ephem, char *user_planets_path, char *user_asteroids_path);
 
 /**
  * @brief Converts an ASSIST supported simulation to a pure REBOUND simulation. 
@@ -301,5 +324,5 @@ int assist_ephem_init(struct assist_ephem* ephem, char *user_planets_path, char 
  * @return A new REBOUND simulation. Needs to be freed by the caller.
  */
 ///
-struct reb_simulation* assist_simulation_convert_to_rebound(const struct reb_simulation* r, const struct assist_ephem* ephem, int merge_moon);
+ASSIST_API struct reb_simulation* assist_simulation_convert_to_rebound(const struct reb_simulation* r, const struct assist_ephem* ephem, int merge_moon);
 #endif

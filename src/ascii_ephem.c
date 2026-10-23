@@ -1,9 +1,8 @@
-#include <sys/mman.h>
+#include "assist_platform.h"
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
 #include <string.h>
-#include <unistd.h>
 
 #include <math.h>
 #include <stdio.h>
@@ -104,15 +103,15 @@ int assist_ascii_find_constant(const struct ascii_s* ascii, const char* name, do
 
 struct ascii_s * assist_ascii_init(char *str)
 {
-    struct stat sb;
+    assist_stat_t sb;
     ssize_t ret;
     int fd;
 
-    if ((fd = open(str, O_RDONLY)) < 0){
+    if ((fd = open(str, O_RDONLY | O_BINARY)) < 0){
         return NULL;
     }
 
-    if (fstat(fd, &sb) < 0){
+    if (assist_fstat(fd, &sb) < 0){
         close(fd);
         fprintf(stderr, "Error while trying to determine filesize.\n");
         return NULL;
