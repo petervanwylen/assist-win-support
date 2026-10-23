@@ -1,3 +1,33 @@
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+# ---------------------------------------------------------------------------
+# cibuildwheel
+# ---------------------------------------------------------------------------
+#
+# Not wired into CI yet: this is the configuration a wheel-publishing workflow
+# would use. `pip install assist` on Windows currently builds from source and
+# needs the Visual Studio Build Tools (see the README); publishing win_amd64
+# wheels removes that requirement for end users.
+#
+# REBOUND is required at build time (for rebound.h and the shared library that
+# ASSIST links against), and ASSIST pins rebound<5.0.0.
+#
+# The Python range is bounded by REBOUND itself: REBOUND 4.x publishes
+# win_amd64 wheels for CPython 3.10-3.12 only. On 3.13+ pip would have to build
+# REBOUND from source on Windows too, which is out of scope here.
+
+[tool.cibuildwheel]
+build-frontend = "build"
+before-build = "pip install \"rebound>=4.4.11,<5.0.0\" numpy"
+test-command = "python -c \"import assist; print(assist.__version__)\""
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]
+build = ["cp310-win_amd64", "cp311-win_amd64", "cp312-win_amd64"]
+
+# ASSIST links against librebound*.pyd from the REBOUND wheel, which is not
+# vendored into the ASSIST wheel; REBOUND is a runtime dependency and supplies
+# it in site-packages. delvewheel would otherwise try to bundle a copy.
+repair-wheel-command = ""
